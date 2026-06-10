@@ -100,7 +100,7 @@ jobs:
     needs: trivy-security-scan
     uses: cloudbees-io/policy-utils/.cloudbees/workflows/action.yaml@main
     with:
-      policy-id: 80e68773-1f2c-4b60-9c3d-f4495acc01d1
+      policy-id: 99de52b5-3669-4321-809a-98c2aeff08b0
       input-data: ${{ needs.trivy-security-scan.outputs.policy-subject }}
     secrets: inherit
   helm-deploy:
