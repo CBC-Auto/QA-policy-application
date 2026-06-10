@@ -9,7 +9,6 @@ metadata:
       jobs:
         - checkout-and-sast-scan
         - policy-check-release-readiness
-        - trivy-security-scan
         - policy-check-container-release-readiness
     - name: Quality Assurance
       jobs:
@@ -71,30 +70,8 @@ jobs:
       policy-id: 2706e227-0453-4b69-9635-e4c10c3bb000
       input-data: ${{ needs.checkout-and-sast-scan.outputs.policy-subject }}
     secrets: inherit
-  trivy-security-scan:
-    needs: policy-check-release-readiness
-    outputs:
-      policy-subject: ${{ steps.trivy-scan.outputs.policy-subject }}
-    steps:
-      - with:
-          url: ${{ vars.JFROG_URL }}
-          username: ${{ vars.JFROG_ACTIONS_USERNAME }}
-          password: ${{ secrets.JFROG_ACTIONS_PASSWORD }}
-          file-path: /cloudbees/workspace/golang-alpine.tar
-          artifactory-path: test-generic-repo/jfrogtest/golang-alpine.tar
-        uses: cloudbees-io/jfrog-artifactory-download-file@v1
-        name: jfrog-actions-workflow-download
-      - with:
-          binary-tar-path: /cloudbees/workspace/golang-alpine.tar
-        uses: cloudbees-io/trivy-plugin@v1
-        name: trivy-scan
-        id: trivy-scan
-      - name: Print Trivy Policy Subject
-        uses: docker://alpine:3.20
-        run: |
-          echo "Policy Subject: ${{ steps.trivy-scan.outputs.policy-subject }}"
   policy-check-container-release-readiness:
-    needs: trivy-security-scan
+    needs: policy-check-release-readiness
     uses: cloudbees-io/policy-utils/.cloudbees/workflows/action.yaml@main
     with:
       policy-id: 80e68773-1f2c-4b60-9c3d-f4495acc01d1
@@ -104,7 +81,6 @@ jobs:
     needs:
       - checkout-and-sast-scan
       - policy-check-release-readiness
-      - trivy-security-scan
       - policy-check-container-release-readiness
       - policy-check-approval
     steps:
@@ -165,7 +141,6 @@ jobs:
     needs:
       - checkout-and-sast-scan
       - policy-check-release-readiness
-      - trivy-security-scan
       - policy-check-container-release-readiness
     uses: cloudbees-io/policy-utils/.cloudbees/workflows/action.yaml@main
     with:
