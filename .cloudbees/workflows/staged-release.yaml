@@ -13,9 +13,6 @@ metadata:
         - policy-check-container-release-readiness
     - name: Quality Assurance
       jobs:
-        - helm-deploy
-        - unify-fm
-        - playwright-e2e-tests
         - policy-check-approval
     - name: Staging
       jobs:
@@ -103,38 +100,12 @@ jobs:
       policy-id: 99de52b5-3669-4321-809a-98c2aeff08b0
       input-data: ${{ needs.trivy-security-scan.outputs.policy-subject }}
     secrets: inherit
-  helm-deploy:
-    needs:
-      - checkout-and-sast-scan
-      - policy-check-release-readiness
-      - trivy-security-scan
-      - policy-check-container-release-readiness
-    steps:
-      - uses: docker://alpine:3.20
-        run: echo "Deploying via Helm to QA environment"
-  unify-fm:
-    needs:
-      - checkout-and-sast-scan
-      - policy-check-release-readiness
-      - trivy-security-scan
-      - policy-check-container-release-readiness
-    steps:
-      - uses: docker://alpine:3.20
-        run: echo "Running Unify FM checks"
-  playwright-e2e-tests:
-    needs:
-      - checkout-and-sast-scan
-      - policy-check-release-readiness
-      - trivy-security-scan
-      - policy-check-container-release-readiness
-    steps:
-      - uses: docker://alpine:3.20
-        run: echo "Running Playwright E2E tests"
   create-release:
     needs:
-      - helm-deploy
-      - unify-fm
-      - playwright-e2e-tests
+      - checkout-and-sast-scan
+      - policy-check-release-readiness
+      - trivy-security-scan
+      - policy-check-container-release-readiness
       - policy-check-approval
     steps:
       - uses: docker://alpine:3.20
@@ -198,5 +169,5 @@ jobs:
       - policy-check-container-release-readiness
     uses: cloudbees-io/policy-utils/.cloudbees/workflows/action.yaml@main
     with:
-      policy-id: 99de52b5-3669-4321-809a-98c2aeff08b0
+      policy-id: 80e68773-1f2c-4b60-9c3d-f4495acc01d1
       input-data: ${{ needs.trivy-security-scan.outputs.policy-subject }}
