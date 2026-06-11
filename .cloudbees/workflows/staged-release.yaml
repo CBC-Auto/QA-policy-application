@@ -130,7 +130,10 @@ jobs:
       - uses: docker://alpine:3.20
         run: echo "Gradual feature rollout in production"
   policy-check-approval:
-    needs: policy-check-container-release-readiness
+    needs:
+      - policy-check-container-release-readiness
+      - checkout-and-sast-scan
+      - policy-check-release-readiness
     uses: cloudbees-io/policy-utils/.cloudbees/workflows/action.yaml@main
     with:
       policy-id: 80e68773-1f2c-4b60-9c3d-f4495acc01d1
