@@ -9,6 +9,7 @@ metadata:
       jobs:
         - checkout-and-sast-scan
         - policy-check-release-readiness
+        - policy-check-container-release-readiness
     - name: Quality Assurance
       jobs:
         - policy-check-approval
@@ -63,7 +64,8 @@ jobs:
         run: |
           echo "Policy Subject: ${{ steps.snyk-sast-scan.outputs.policy-subject }}"
   policy-check-release-readiness:
-    needs: checkout-and-sast-scan
+    needs:
+      - checkout-and-sast-scan
     uses: cloudbees-io/policy-utils/.cloudbees/workflows/action.yaml@main
     with:
       policy-id: 2706e227-0453-4b69-9635-e4c10c3bb000
@@ -71,8 +73,7 @@ jobs:
     secrets: inherit
   create-release:
     needs:
-      - checkout-and-sast-scan
-      - policy-check-release-readiness
+      - policy-check-container-release-readiness
       - policy-check-approval
     steps:
       - uses: docker://alpine:3.20
@@ -129,10 +130,16 @@ jobs:
       - uses: docker://alpine:3.20
         run: echo "Gradual feature rollout in production"
   policy-check-approval:
-    needs:
-      - checkout-and-sast-scan
-      - policy-check-release-readiness
+    needs: policy-check-container-release-readiness
     uses: cloudbees-io/policy-utils/.cloudbees/workflows/action.yaml@main
     with:
       policy-id: 80e68773-1f2c-4b60-9c3d-f4495acc01d1
+      input-data: ${{ needs.checkout-and-sast-scan.outputs.policy-subject }}
+  policy-check-container-release-readiness:
+    needs:
+      - policy-check-release-readiness
+      - checkout-and-sast-scan
+    uses: cloudbees-io/policy-utils/.cloudbees/workflows/action.yaml@main
+    with:
+      policy-id: 99de52b5-3669-4321-809a-98c2aeff08b0
       input-data: ${{ needs.checkout-and-sast-scan.outputs.policy-subject }}
