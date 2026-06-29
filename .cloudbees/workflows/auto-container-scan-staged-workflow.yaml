@@ -9,7 +9,6 @@ metadata:
       jobs:
         - Container-scan
         - policy-check-release-readiness
-        - policy-check-container-release-readiness
     - name: Quality Assurance
       jobs:
         - policy-check-approval
@@ -22,19 +21,12 @@ metadata:
 jobs:
   policy-check-release-readiness:
     needs: Container-scan
-    uses: cloudbees-io/policy-utils/.cloudbees/workflows/action.yaml@main
+    uses: cloudbees-io/policy-utils/.cloudbees/workflows/by-context.yaml@lt-test
     with:
-      policy-id: bb1715f3-b310-4ec7-bd29-99aa32f76368
-      input-data: ${{ needs.checkout-and-sast-scan.outputs.policy-subject }}
-    secrets: inherit
-  policy-check-container-release-readiness:
-    needs:
-      - policy-check-release-readiness
-      - Container-scan
-    uses: cloudbees-io/policy-utils/.cloudbees/workflows/action.yaml@main
-    with:
-      policy-id: 94648670-7754-4d1e-8207-fa31504ad4e5
-      input-data: ${{ needs.checkout-and-sast-scan.outputs.policy-subject }}
+      checkpoint-type: stage
+      input-data: ${{ needs.container-scan.outputs.policy-subject }}
+      checkpoint-position: within
+      checkpoint-name: Release Readiness
     secrets: inherit
   smoke-tests:
     steps:
@@ -47,12 +39,12 @@ jobs:
   policy-check-approval:
     needs:
       - Container-scan
-      - policy-check-release-readiness
-      - policy-check-container-release-readiness
-    uses: cloudbees-io/policy-utils/.cloudbees/workflows/action.yaml@main
+    uses: cloudbees-io/policy-utils/.cloudbees/workflows/by-context.yaml@lt-test
     with:
-      policy-id: fcfe43c5-021f-46d8-826a-4267b1123200
-      input-data: ${{ needs.checkout-and-sast-scan.outputs.policy-subject }}
+      checkpoint-type: stage
+      input-data: ${{ needs.container-scan.outputs.policy-subject }}
+      checkpoint-position: within
+      checkpoint-name: Quality Assurance
   Container-scan:
     outputs:
       policy-subject: ${{ steps.trivy-scan.outputs.policy-subject }}
