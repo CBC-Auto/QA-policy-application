@@ -1,0 +1,46 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: auto-container-scan-staged-workflow
+on:
+  workflow_dispatch:
+    inputs:
+      manifest:
+        type: string
+        required: true
+        description: This is a system-generated parameter and is required for use in application releases. Refer to https://docs.cloudbees.com/docs/cloudbees-platform/latest/applications/releases#manifest for the expected format
+metadata:
+  stages/v1alpha1:
+    - name: Development
+      jobs:
+        - checkout-and-sast-scan
+        - policy-check-release-readiness
+jobs:
+  checkout-and-sast-scan:
+    outputs:
+      policy-subject: ${{ steps.trivy-scan.outputs.policy-subject }}
+    steps:
+      - with:
+          url: ${{ vars.PE_JFROG_URL }}
+          username: ${{ vars.PE_JFROG_ACTIONS_USERNAME }}
+          password: ${{ secrets.PE_JFROG_ACTIONS_PASSWORD }}
+          file-path: /cloudbees/workspace/golang-alpine.tar
+          artifactory-path: test-generic-repo/jfrogtest/golang-alpine.tar
+        uses: cloudbees-io/jfrog-artifactory-download-file@v1
+        name: jfrog-actions-workflow-download
+      - with:
+          image-tag: v1
+          image-location: /cloudbees/workspace/golang-alpine.tar
+        uses: cloudbees-io/trivy-scan-container@v1
+        name: trivy-scan
+      - run: 'echo "Policy Subject: ${{ steps.trivy-scan.outputs.policy-subject }}"'
+        uses: docker://alpine:3.20
+        name: Print Trivy Policy Subject
+  policy-check-release-readiness:
+    needs:
+      - checkout-and-sast-scan
+    uses: cloudbees-io/policy-utils/.cloudbees/workflows/by-context.yaml@lt-test
+    with:
+      checkpoint-type: stage
+      input-data: ${{ needs.checkout-and-sast-scan.outputs.policy-subject }}
+      checkpoint-position: within
+      checkpoint-name: Development
