@@ -33,9 +33,9 @@ jobs:
         run: |
           echo "Policy Subject: ${{ steps.snyk-sast-scan.outputs.policy-subject }}"
       - with:
-          url: ${{ vars.PE_JFROG_URL }}
-          username: ${{ vars.PE_JFROG_ACTIONS_USERNAME }}
-          password: ${{ secrets.PE_JFROG_ACTIONS_PASSWORD }}
+          url: ${{ vars.JFROG_URL }}
+          username: ${{ vars.JFROG_ACTIONS_USERNAME }}
+          password: ${{ secrets.JFROG_ACTIONS_PASSWORD }}
           file-path: /cloudbees/workspace/golang-alpine.tar
           artifactory-path: test-generic-repo/jfrogtest/golang-alpine.tar
         uses: cloudbees-io/jfrog-artifactory-download-file@v1
@@ -49,7 +49,6 @@ jobs:
           echo "Policy Subject: ${{ steps.trivy-scan.outputs.policy-subject }}"
         uses: docker://alpine:3.20
         name: Print Trivy Policy Subject
-
   policy-check-release-readiness:
     needs:
       - checkout-and-sast-scan
