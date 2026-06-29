@@ -1,22 +1,76 @@
 apiVersion: automation.cloudbees.io/v1alpha1
 kind: workflow
-name: auto-container-scan-staged-workflow
+name: container-scan-staged-release
 on:
   workflow_dispatch:
-    inputs:
-      manifest:
-        type: string
-        required: true
-        description: This is a system-generated parameter and is required for use in application releases. Refer to https://docs.cloudbees.com/docs/cloudbees-platform/latest/applications/releases#manifest for the expected format
 metadata:
   stages/v1alpha1:
+    - name: Release Readiness
+      jobs:
+        - Container-scan
+        - policy-check-release-readiness
+        - policy-check-container-release-readiness
+    - name: Quality Assurance
+      jobs:
+        - policy-check-approval
+    - name: Staging
+      jobs:
+        - smoke-tests
     - name: Production
       jobs:
-        - deploy-to-Production
+        - prod-smoke-tests
 jobs:
-  deploy-to-Production:
+  policy-check-release-readiness:
+    needs: Container-scan
+    uses: cloudbees-io/policy-utils/.cloudbees/workflows/action.yaml@main
+    with:
+      policy-id: bb1715f3-b310-4ec7-bd29-99aa32f76368
+      input-data: ${{ needs.checkout-and-sast-scan.outputs.policy-subject }}
+    secrets: inherit
+  policy-check-container-release-readiness:
+    needs:
+      - policy-check-release-readiness
+      - Container-scan
+    uses: cloudbees-io/policy-utils/.cloudbees/workflows/action.yaml@main
+    with:
+      policy-id: 94648670-7754-4d1e-8207-fa31504ad4e5
+      input-data: ${{ needs.checkout-and-sast-scan.outputs.policy-subject }}
+    secrets: inherit
+  smoke-tests:
     steps:
-      - name: Deploy to Production
-        uses: docker://golang:1.20.3-alpine3.17
-        shell: sh
-        run: echo "Deploying to Production"
+      - run: echo "Running smoke tests on staging"
+        uses: docker://alpine:3.20
+  prod-smoke-tests:
+    steps:
+      - uses: docker://alpine:3.20
+        run: echo "Running production smoke tests"
+  policy-check-approval:
+    needs:
+      - Container-scan
+      - policy-check-release-readiness
+      - policy-check-container-release-readiness
+    uses: cloudbees-io/policy-utils/.cloudbees/workflows/action.yaml@main
+    with:
+      policy-id: fcfe43c5-021f-46d8-826a-4267b1123200
+      input-data: ${{ needs.checkout-and-sast-scan.outputs.policy-subject }}
+  Container-scan:
+    outputs:
+      policy-subject: ${{ steps.trivy-scan.outputs.policy-subject }}
+    steps:
+      - with:
+          url: ${{ vars.JFROG_URL }}
+          username: ${{ vars.JFROG_ACTIONS_USERNAME }}
+          password: ${{ secrets.JFROG_ACTIONS_PASSWORD }}
+          file-path: /cloudbees/workspace/golang-alpine.tar
+          artifactory-path: test-generic-repo/jfrogtest/golang-alpine.tar
+        uses: cloudbees-io/jfrog-artifactory-download-file@v1
+        name: jfrog-actions-workflow-download
+      - with:
+          binary-tar-path: /cloudbees/workspace/golang-alpine.tar
+        uses: cloudbees-io/trivy-plugin@v1
+        name: trivy-scan
+        id: trivy-scan
+      - run: |
+          echo "Policy Subject: ${{ steps.trivy-scan.outputs.policy-subject }}"
+        uses: docker://alpine:3.20
+        name: Print Trivy Policy Subject
