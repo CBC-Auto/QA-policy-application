@@ -9,6 +9,9 @@ metadata:
       jobs:
         - checkout-and-sast-scan
         - policy-check-release-readiness
+    - name: QA
+      jobs:
+        - job
 jobs:
   checkout-and-sast-scan:
     outputs:
@@ -50,11 +53,20 @@ jobs:
         uses: docker://alpine:3.20
         name: Print Trivy Policy Subject
   policy-check-release-readiness:
-    needs:
-      - checkout-and-sast-scan
+    needs: checkout-and-sast-scan
     uses: cloudbees-io/policy-utils/.cloudbees/workflows/by-context.yaml@lt-test
     with:
       checkpoint-type: stage
       input-data: ${{ needs.checkout-and-sast-scan.outputs.policy-subject }}
       checkpoint-position: within
       checkpoint-name: Development
+  job:
+    needs:
+      - checkout-and-sast-scan
+      - policy-check-release-readiness
+    uses: cloudbees-io/policy-utils/.cloudbees/workflows/by-context.yaml@lt-test
+    with:
+      checkpoint-type: stage
+      input-data: ${{ needs.checkout-and-sast-scan.outputs.policy-subject }}
+      checkpoint-position: within
+      checkpoint-name: QA
